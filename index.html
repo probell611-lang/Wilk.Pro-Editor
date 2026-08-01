@@ -5,25 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Telegra.ph-like Editor (Pro)</title>
 
-    <!-- Firebase SDK через CDN (работает прямо в браузере) -->
+    <!-- Firebase SDK через CDN (type="module" обязателен!) -->
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
       import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-      // Твой конфиг Firebase (ключи уже вставлены)
+      // 👇 ВСТАВЬ СЮДА НОВЫЕ КЛЮЧИ (после того как перегенерируешь их в Firebase) 👇
       const firebaseConfig = {
         apiKey: "AIzaSyC9uJtZYWaYT7Z8hIrRd11eT_huiCw829w",
         authDomain: "wilk-pro-editor-7a469.firebaseapp.com",
         projectId: "wilk-pro-editor-7a469",
         storageBucket: "wilk-pro-editor-7a469.firebasestorage.app",
         messagingSenderId: "241990150929",
-        appId: "1:241990150929:web:cdbdf514719e19c1bd7ab0"
+        appId: "1:241990150929:web:3667573a6c8023cfbd7ab0"
       };
 
       const app = initializeApp(firebaseConfig);
       const db = getFirestore(app);
 
-      // Делаем базу доступной глобально для обработчика кнопки
+      // Делаем db доступным для основного скрипта
       window.fb = { app, db };
     </script>
 
