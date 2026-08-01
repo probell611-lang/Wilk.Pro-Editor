@@ -22,21 +22,23 @@
     </style>
 
     <!-- Firebase SDK -->
-    <script type="module">
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-      import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, collection, addDoc, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-      const firebaseConfig = {
-        apiKey: "AIzaSyD...",
-        authDomain: "my-telegraph-editor.firebaseapp.com",
-        projectId: "my-telegraph-editor",
-        storageBucket: "my-telegraph-editor.appspot.com",
-        messagingSenderId: "...",
-        appId: "..."
-      };
+  const firebaseConfig = {
+    apiKey: "AIzaSyC9uJtZYWaYT7Z8hIrRd11eT_huiCw829w",
+    authDomain: "wilk-pro-editor-7a469.firebaseapp.com",
+    projectId: "wilk-pro-editor-7a469",
+    storageBucket: "wilk-pro-editor-7a469.firebasestorage.app",
+    messagingSenderId: "241990150929",
+    appId: "1:241990150929:web:cdbdf514719e19c1bd7ab0"
+    // measurementId не нужен
+  };
 
-      const app = initializeApp(firebaseConfig);
-      const db = getFirestore(app);
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
 
       window.addEventListener('DOMContentLoaded', async () => {
         const params = new URLSearchParams(window.location.search);
