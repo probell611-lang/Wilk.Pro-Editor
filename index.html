@@ -1,523 +1,370 @@
 <!DOCTYPE html>
 <html lang="ru">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Telegra.ph-like Editor (Pro)</title>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Wilk-pro-Editor</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --text: #111111;
+      --border: #e5e5e5;
+      --action: #0088cc;
+      --muted: #888888;
+    }
+    [data-theme="dark"] {
+      --bg: #121212;
+      --text: #e0e0e0;
+      --border: #333333;
+      --muted: #aaaaaa;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.6;
+      padding: 24px;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 360px;
+      gap: 24px;
+    }
+    @media (max-width: 900px) { .container { grid-template-columns: 1fr; } }
+    header { margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 16px; }
+    h1 { font-size: 28px; font-weight: 400; letter-spacing: -0.5px; }
+    input[type="text"] {
+      width: 100%; padding: 12px 14px; border: 1px solid var(--border);
+      border-radius: 6px; font-size: 18px; margin-top: 12px; outline: none;
+    }
+    input[type="text"]:focus { border-color: var(--action); }
+    #editor {
+      min-height: 500px; padding: 16px; border: 1px solid var(--border);
+      border-radius: 8px; cursor: text; outline: none; white-space: pre-wrap;
+    }
+    [contenteditable]:empty::before {
+      content: attr(placeholder); color: #ccc; pointer-events: none; display: block;
+    }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+    button.tool {
+      padding: 8px 12px; border: 1px solid var(--border); background: #f5f5f5;
+      color: var(--text); border-radius: 6px; cursor: pointer; font-size: 13px;
+    }
+    [data-theme="dark"] button.tool { background: #333; border-color: #555; }
+    button.tool:hover { background: var(--action); color: white; }
+    button.btn-primary {
+      background: var(--action); color: white; border: none; padding: 10px 16px;
+      border-radius: 6px; cursor: pointer; font-size: 14px; margin-left: auto;
+    }
+    button.btn-primary:hover { background: #006699; }
+    aside { border-left: 1px solid var(--border); padding-left: 20px; height: fit-content; }
+    .panel { margin-bottom: 32px; }
+    .panel h3 { font-size: 15px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 12px; }
+    .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .stat-item { font-size: 13px; } .stat-val { font-weight: bold; color: var(--action); }
+    blockquote {
+      border-left: 4px solid var(--action); margin: 16px 0; padding-left: 16px;
+      color: var(--muted); font-style: italic;
+    }
+    .note, .warning, .important { padding: 12px; border-radius: 6px; margin: 16px 0; }
+    .note { background: #f0f7ff; border: 1px solid #cce5ff; color: #0056b3; }
+    .warning { background: #fff3cd; border: 1px solid #ffeeba; color: #856404; }
+    .important { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+    .divider {
+      height: 2px; background: var(--border); margin: 24px 0; position: relative;
+    }
+    .divider::after {
+      content: '—'; position: absolute; left: 50%; top: 50%;
+      transform: translate(-50%, -50%); background: var(--bg); padding: 0 8px; color: var(--muted);
+    }
+    #publish-result {
+      margin-top: 24px; padding: 16px; border: 2px dashed var(--action);
+      border-radius: 8px; background: #f0f8ff; color: #0d47a1; display: none; animation: fadeIn 0.4s ease;
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+    footer { margin-top: 48px; text-align: center; color: var(--muted); font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <main>
+      <header>
+        <h1>Новая статья</h1>
+        <input type="text" id="title" placeholder="Заголовок (обязательно)" />
+      </header>
 
-    <!-- Firebase SDK через CDN (type="module" обязателен!) -->
-    <script type="module">
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-      import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+      <div class="toolbar">
+        <button class="tool" onclick="exec('bold')">B</button>
+        <button class="tool" onclick="exec('italic')">I</button>
+        <button class="tool" onclick="exec('underline')">U</button>
+        <button class="tool" onclick="insertLink()">🔗</button>
+        <button class="tool" onclick="setHeading('H2')">H2</button>
+        <button class="tool" onclick="setHeading('H3')">H3</button>
+        <button class="tool" onclick="exec('insertUnorderedList')">•</button>
+        <button class="tool" onclick="exec('insertOrderedList')">1.</button>
+        <button class="tool" onclick="wrapSelection('blockquote')">Цитата</button>
+        <button class="tool" onclick="wrapBlock('note')">Заметка</button>
+        <button class="tool" onclick="wrapBlock('warning')">Внимание</button>
+        <button class="tool" onclick="wrapBlock('important')">Важно</button>
+        <button class="tool" onclick="promptMedia()">Медиа</button>
+        <button class="tool" onclick="insertDivider()">Разделитель</button>
+      </div>
 
-      // 👇 ВСТАВЬ СЮДА НОВЫЕ КЛЮЧИ (после того как перегенерируешь их в Firebase) 👇
-      const firebaseConfig = {
-        apiKey: "AIzaSyC9uJtZYWaYT7Z8hIrRd11eT_huiCw829w",
-        authDomain: "wilk-pro-editor-7a469.firebaseapp.com",
-        projectId: "wilk-pro-editor-7a469",
-        storageBucket: "wilk-pro-editor-7a469.firebasestorage.app",
-        messagingSenderId: "241990150929",
-        appId: "1:241990150929:web:3667573a6c8023cfbd7ab0"
-      };
+      <div id="editor" contenteditable="true" placeholder="Начните писать..."></div>
 
-      const app = initializeApp(firebaseConfig);
-      const db = getFirestore(app);
+      <div class="toolbar" style="justify-content: flex-end; margin-top: 12px;">
+        <button class="btn-primary" id="btn-publish">Опубликовать (локально)</button>
+        <button class="tool" id="btn-clear">Очистить</button>
+        <button class="tool" id="btn-cancel">Отмена</button>
+      </div>
 
-      // Делаем db доступным для основного скрипта
-      window.fb = { app, db };
-    </script>
+      <div id="publish-result">
+        <strong>Статья сохранена в браузере!</strong><br>
+        Теперь можешь открыть <a href="view.html">view.html</a>, чтобы посмотреть её.
+      </div>
+    </main>
 
-    <style>
-      :root {
-        --bg: #ffffff;
-        --text: #111111;
-        --border: #e5e5e5;
-        --action: #0088cc;
-        --hover: #006699;
-        --muted: #888888;
-        --accent: #555555;
-      }
-      [data-theme="dark"] {
-        --bg: #121212;
-        --text: #e0e0e0;
-        --border: #333333;
-        --muted: #aaaaaa;
-        --accent: #cccccc;
-      }
-      * { box-sizing: border-box; margin: 0; padding: 0; }
-      body {
-        background: var(--bg);
-        color: var(--text);
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        line-height: 1.6;
-        padding: 24px;
-      }
-      .container {
-        max-width: 1200px;
-        margin: 0 auto;
-        display: grid;
-        grid-template-columns: 1fr 420px;
-        gap: 24px;
-      }
-      @media (max-width: 900px) { .container { grid-template-columns: 1fr; } }
-      header { margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 16px; }
-      h1 { font-size: 28px; font-weight: 400; letter-spacing: -0.5px; }
-      input[type="text"] {
-        width: 100%; padding: 12px 14px; border: 1px solid var(--border);
-        border-radius: 6px; font-size: 18px; margin-top: 12px; outline: none;
-      }
-      input[type="text"]:focus { border-color: var(--action); }
-      #editor {
-        min-height: 500px; padding: 16px; border: 1px solid var(--border);
-        border-radius: 8px; cursor: text; outline: none; white-space: pre-wrap;
-      }
-      [contenteditable]:empty::before {
-        content: attr(placeholder); color: #ccc; pointer-events: none; display: block;
-      }
-      .toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
-      button.tool {
-        padding: 8px 12px; border: 1px solid var(--border); background: #f5f5f5;
-        color: var(--text); border-radius: 6px; cursor: pointer; font-size: 13px;
-      }
-      [data-theme="dark"] button.tool { background: #333; border-color: #555; }
-      button.tool:hover { background: var(--accent); }
-      [data-theme="dark"] button.tool:hover { background: #444; }
-      button.btn-primary {
-        background: var(--action); color: white; border: none; padding: 10px 16px;
-        border-radius: 6px; cursor: pointer; font-size: 14px;
-      }
-      button.btn-primary:hover { background: var(--hover); }
-      aside { border-left: 1px solid var(--border); padding-left: 20px; height: fit-content; }
-      .panel { margin-bottom: 32px; }
-      .panel h3 { font-size: 15px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 12px; }
-      .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-      .stat-item { font-size: 13px; } .stat-val { font-weight: bold; color: var(--action); }
-      #preview {
-        background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
-        padding: 16px; min-height: 400px; overflow-y: auto;
-      }
-      #preview img { max-width: 100%; height: auto; border-radius: 4px; }
-      blockquote {
-        border-left: 4px solid var(--action); margin: 16px 0; padding-left: 16px;
-        color: var(--muted); font-style: italic;
-      }
-      .note, .warning, .important { padding: 12px; border-radius: 6px; margin: 16px 0; }
-      .note { background: #f0f7ff; border: 1px solid #cce5ff; color: #0056b3; }
-      .warning { background: #fff3cd; border: 1px solid #ffeeba; color: #856404; }
-      .important { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
-      .divider {
-        height: 2px; background: var(--border); margin: 24px 0; position: relative;
-      }
-      .divider::after {
-        content: '—'; position: absolute; left: 50%; top: 50%;
-        transform: translate(-50%, -50%); background: var(--bg); padding: 0 8px; color: var(--muted);
-      }
-      #versions-list { max-height: 300px; overflow-y: auto; }
-      #versions-list li {
-        padding: 6px 8px; border-bottom: 1px solid var(--border); cursor: pointer; font-size: 13px;
-      }
-      #save-status { font-size: 12px; color: var(--muted); margin-top: 8px; text-align: right; }
-      .saving { color: var(--action); } .saved { color: #28a745; } .error { color: #dc3545; }
-      #publish-result {
-        margin-top: 24px; padding: 16px; border: 2px dashed var(--action);
-        border-radius: 8px; background: #f0f8ff; color: #0d47a1; display: none; animation: fadeIn 0.4s ease;
-      }
-      @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
-      #published-link { color: #d32f2f; font-weight: bold; text-decoration: underline; word-break: break-all; }
-      footer { margin-top: 48px; text-align: center; color: var(--muted); font-size: 13px; }
-    </style>
-  </head>
-  <body>
-    <div class="container">
-      <main>
-        <header>
-          <h1>Новая статья</h1>
-          <input type="text" id="title" placeholder="Заголовок (обязательно)" />
-        </header>
+    <aside>
+      <label style="font-size:13px; cursor:pointer; display:flex; align-items:center; gap:6px;">
+        <span>Тёмная тема</span>
+        <input type="checkbox" id="theme-toggle" />
+      </label>
 
-        <div class="toolbar">
-          <button class="tool" onclick="exec('bold')">B</button>
-          <button class="tool" onclick="exec('italic')">I</button>
-          <button class="tool" onclick="exec('underline')">U</button>
-          <button class="tool" onclick="insertLink()">🔗</button>
-          <button class="tool" onclick="setHeading('H2')">H2</button>
-          <button class="tool" onclick="setHeading('H3')">H3</button>
-          <button class="tool" onclick="exec('insertUnorderedList')">•</button>
-          <button class="tool" onclick="exec('insertOrderedList')">1.</button>
-          <button class="tool" onclick="wrapSelection('blockquote')">Цитата</button>
-          <button class="tool" onclick="wrapBlock('note')">Заметка</button>
-          <button class="tool" onclick="wrapBlock('warning')">Внимание</button>
-          <button class="tool" onclick="wrapBlock('important')">Важно</button>
-          <button class="tool" onclick="promptMedia()">Медиа</button>
-          <button class="tool" onclick="insertDivider()">Разделитель</button>
+      <div class="panel">
+        <h3>Статистика</h3>
+        <div class="stats-grid">
+          <div><span class="stat-item">Слов</span><span class="stat-val" id="stat-words">0</span></div>
+          <div><span class="stat-item">Символов</span><span class="stat-val" id="stat-chars">0</span></div>
+          <div><span class="stat-item">Абзацев</span><span class="stat-val" id="stat-paragraphs">0</span></div>
+          <div><span class="stat-item">Средняя длина</span><span class="stat-val" id="stat-avg-len">—</span></div>
         </div>
+      </div>
 
-        <div id="editor" contenteditable="true" placeholder="Начните писать..."></div>
+      <div class="panel">
+        <h3>Оглавление</h3>
+        <div id="toc"></div>
+      </div>
+    </aside>
+  </div>
 
-        <div class="toolbar" style="justify-content: flex-end; margin-top: 12px;">
-          <button class="btn-primary" id="btn-publish">Опубликовать</button>
-          <button class="tool" id="btn-clear">Очистить</button>
-          <button class="tool" id="btn-cancel">Отмена</button>
-        </div>
+  <footer>
+    &copy; 2026 Wilk-pro-Editor (Local version). Данные хранятся в браузере.
+  </footer>
 
-        <div id="publish-result">
-          <strong>Статья опубликована!</strong><br>
-          Ссылка на статью: <a id="published-link" href="#" target="_blank">Загрузка...</a>
-        </div>
-        <div id="save-status">Сохранение: —</div>
-      </main>
+  <script>
+    const titleEl = document.getElementById('title');
+    const editorEl = document.getElementById('editor');
+    const tocEl = document.getElementById('toc');
 
-      <aside>
-        <label style="font-size:13px; cursor:pointer; display:flex; align-items:center; gap:6px;">
-          <span>Тёмная тема</span>
-          <input type="checkbox" id="theme-toggle" />
-        </label>
+    const statWordsEl = document.getElementById('stat-words');
+    const statCharsEl = document.getElementById('stat-chars');
+    const statParagraphsEl = document.getElementById('stat-paragraphs');
+    const statAvgLenEl = document.getElementById('stat-avg-len');
 
-        <div class="panel">
-          <h3>Предпросмотр</h3>
-          <div id="preview"></div>
-        </div>
+    const publishResult = document.getElementById('publish-result');
 
-        <div class="panel">
-          <h3>Статистика</h3>
-          <div class="stats-grid">
-            <div><span class="stat-item">Слов</span><span class="stat-val" id="stat-words">0</span></div>
-            <div><span class="stat-item">Символов</span><span class="stat-val" id="stat-chars">0</span></div>
-            <div><span class="stat-item">Абзацев</span><span class="stat-val" id="stat-paragraphs">0</span></div>
-            <div><span class="stat-item">Средняя длина</span><span class="stat-val" id="stat-avg-len">—</span></div>
-          </div>
-        </div>
+    // Тема
+    const themeToggle = document.getElementById('theme-toggle');
+    themeToggle.addEventListener('change', () => {
+      document.documentElement.setAttribute('data-theme', themeToggle.checked ? 'dark' : '');
+    });
 
-        <div class="panel">
-          <h3>Оглавление</h3>
-          <div id="toc"></div>
-        </div>
+    function updateStats() {
+      const text = editorEl.innerText;
+      const words = text.trim().split(/\s+/).filter(Boolean).length;
+      const chars = text.length;
+      const paragraphs = Array.from(editorEl.children).filter(n => n.tagName !== 'BR').length || 1;
+      const avgLen = paragraphs > 0 ? Math.round(chars / paragraphs) : 0;
 
-        <div class="panel">
-          <h3>Версии (черновики)</h3>
-          <ul id="versions-list"></ul>
-          <button class="tool" style="width:100%" onclick="createVersion()">Сохранить версию</button>
-        </div>
+      statWordsEl.textContent = words;
+      statCharsEl.textContent = chars;
+      statParagraphsEl.textContent = paragraphs;
+      statAvgLenEl.textContent = avgLen;
+    }
 
-        <div class="panel">
-          <h3>Экспорт</h3>
-          <button class="tool" style="width:100%" onclick="exportHTML()">HTML</button>
-          <button class="tool" style="width:100%" onclick="window.print()">PDF</button>
-          <button class="tool" style="width:100%" onclick="exportTXT()">TXT</button>
-        </div>
-      </aside>
-    </div>
-
-    <footer>
-      &copy; 2026 wilk Pro Demo. Черновик сохраняется в браузере.
-    </footer>
-
-    <script>
-      const STORAGE_KEY = 'telegraph_draft';
-      const VERSIONS_KEY = 'telegraph_versions';
-
-      const titleEl = document.getElementById('title');
-      const editorEl = document.getElementById('editor');
-      const previewEl = document.getElementById('preview');
-      const tocEl = document.getElementById('toc');
-      const versionsList = document.getElementById('versions-list');
-      const saveStatus = document.getElementById('save-status');
-
-      const statWordsEl = document.getElementById('stat-words');
-      const statCharsEl = document.getElementById('stat-chars');
-      const statParagraphsEl = document.getElementById('stat-paragraphs');
-      const statAvgLenEl = document.getElementById('stat-avg-len');
-
-      const publishResult = document.getElementById('publish-result');
-      const publishedLink = document.getElementById('published-link');
-
-      let saveTimeout;
-      let isSaving = false;
-
-      const themeToggle = document.getElementById('theme-toggle');
-      themeToggle.addEventListener('change', () => {
-        document.body.setAttribute('data-theme', themeToggle.checked ? 'dark' : '');
-      });
-
-      function loadDraft() {
-        const draft = localStorage.getItem(STORAGE_KEY);
-        if (!draft) return;
-        try {
-          const data = JSON.parse(draft);
-          if (data.title) titleEl.value = data.title;
-          if (data.content) editorEl.innerHTML = data.content;
-          updateAll();
-        } catch (e) { console.warn('Не удалось загрузить черновик', e); }
+    function buildTOC() {
+      tocEl.innerHTML = '';
+      const h2s = editorEl.querySelectorAll('h2');
+      if (h2s.length === 0) {
+        tocEl.innerHTML = '<span style="color:#999">Заголовков H2 нет</span>';
+        return;
       }
 
-      function saveDraft() {
-        isSaving = true;
-        updateSaveStatus('Сохраняется...', 'saving');
-        clearTimeout(saveTimeout);
-        saveTimeout = setTimeout(() => {
-          const data = { title: titleEl.value.trim(), content: editorEl.innerHTML.trim() };
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-          isSaving = false;
-          updateSaveStatus('Сохранено', 'saved');
-          updateVersionsUI();
-        }, 600);
-      }
-
-      function updateSaveStatus(text, cls) {
-        saveStatus.textContent = 'Сохранение: ' + text;
-        saveStatus.className = cls ? cls : '';
-      }
-
-      function updateStats() {
-        const text = editorEl.innerText;
-        const words = text.trim().split(/\s+/).filter(Boolean).length;
-        const chars = text.length;
-        const paragraphs = Array.from(editorEl.children).filter(n => n.tagName !== 'BR').length || 1;
-        const avgLen = paragraphs > 0 ? Math.round(chars / paragraphs) : 0;
-
-        statWordsEl.textContent = words;
-        statCharsEl.textContent = chars;
-        statParagraphsEl.textContent = paragraphs;
-        statAvgLenEl.textContent = avgLen;
-      }
-
-      function buildTOC() {
-        tocEl.innerHTML = '';
-        const h2s = editorEl.querySelectorAll('h2');
-        if (h2s.length === 0) {
-          tocEl.innerHTML = '<span style="color:#999">Заголовков H2 нет</span>';
-          return;
-        }
-
-        const ul = document.createElement('ul');
-        h2s.forEach((h, i) => {
-          const id = 'section-' + i;
-          h.id = id; // авто-назначение ID для якорей
-          const li = document.createElement('li');
-          const a = document.createElement('a');
-          a.href = '#' + id;
-          a.textContent = h.innerText;
-          li.appendChild(a);
-          ul.appendChild(li);
-        });
-        tocEl.appendChild(ul);
-      }
-
-      // --- Предпросмотр ---
-      function updatePreview() {
-        const title = titleEl.value.trim() ? `<h1>${escapeHtml(titleEl.value)}</h1>` : '';
-        previewEl.innerHTML = title + editorEl.innerHTML;
-      }
-
-      function escapeHtml(str) {
-        if (!str) return '';
-        return str
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;')
-          .replace(/"/g, '&quot;')
-          .replace(/'/g, '&#39;');
-      }
-
-      // --- Публикация через Firebase Firestore ---
-      document.getElementById('btn-publish').addEventListener('click', async () => {
-        const title = titleEl.value.trim();
-        if (!title) {
-          alert('Нужен заголовок!');
-          return;
-        }
-
-        try {
-          // Отправляем в Firestore
-          const docRef = await addDoc(collection(window.fb.db, "articles"), {
-            title: title,
-            content: editorEl.innerHTML.trim(),
-            createdAt: new Date()
-          });
-
-          // Генерируем ссылку на страницу просмотра
-          const publicUrl = `${window.location.origin}/view.html?id=${docRef.id}`;
-
-          publishResult.style.display = 'block';
-          publishedLink.href = publicUrl;
-          publishedLink.textContent = publicUrl;
-
-          window.scrollTo({ top: publishResult.offsetTop - 20, behavior: 'smooth' });
-        } catch (e) {
-          console.error(e);
-          alert('Ошибка публикации: ' + e.message);
-        }
-      });
-
-      // --- Версии (черновики в localStorage) ---
-      function getVersions() {
-        try {
-          return JSON.parse(localStorage.getItem(VERSIONS_KEY) || '[]');
-        } catch (e) {
-          return [];
-        }
-      }
-
-      function saveVersion() {
-        const versions = getVersions();
-        const now = new Date().toLocaleString('ru-RU');
-        versions.push({
-          title: titleEl.value.trim(),
-          content: editorEl.innerHTML.trim(),
-          date: now
-        });
-        localStorage.setItem(VERSIONS_KEY, JSON.stringify(versions.slice(-20)));
-      }
-
-      function updateVersionsUI() {
-        const versions = getVersions();
-        versionsList.innerHTML = '';
-        versions.forEach((v, i) => {
-          const li = document.createElement('li');
-          li.textContent = `${v.date} — ${v.title || 'Без заголовка'}`;
-          li.onclick = () => restoreVersion(i);
-          versionsList.appendChild(li);
-        });
-      }
-
-      function restoreVersion(index) {
-        const versions = getVersions();
-        if (!versions[index]) return;
-        titleEl.value = versions[index].title;
-        editorEl.innerHTML = versions[index].content;
-        updateAll();
-      }
-
-      function createVersion() {
-        saveVersion();
-        updateVersionsUI();
-        alert('Версия сохранена');
-      }
-
-      // --- Экспорт ---
-      function exportHTML() {
-        const title = titleEl.value.trim();
-        const content = editorEl.innerHTML.trim();
-        const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title></head><body><h1>${escapeHtml(title)}</h1>${content}</body></html>`;
-        downloadString(html, 'article.html', 'text/html');
-      }
-
-      function exportTXT() {
-        const text = editorEl.innerText.trim();
-        downloadString(text, 'article.txt', 'text/plain');
-      }
-
-      function downloadString(str, filename, mime) {
-        const blob = new Blob([str], { type: mime });
-        const url = URL.createObjectURL(blob);
+      const ul = document.createElement('ul');
+      h2s.forEach((h, i) => {
+        const id = 'section-' + i;
+        h.id = id;
+        const li = document.createElement('li');
         const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(() => {
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-        }, 100);
+        a.href = '#' + id;
+        a.textContent = h.innerText;
+        li.appendChild(a);
+        ul.appendChild(li);
+      });
+      tocEl.appendChild(ul);
+    }
+
+    document.addEventListener('input', () => { updateStats(); buildTOC(); }, { target: editorEl });
+    editorEl.addEventListener('blur', updateStats);
+    editorEl.addEventListener('focus', updateStats);
+
+    function exec(cmd) {
+      document.execCommand(cmd);
+      editorEl.focus();
+      updateStats();
+      buildTOC();
+    }
+
+    function setHeading(tag) {
+      const selection = window.getSelection();
+      if (!selection.rangeCount) return;
+      const range = selection.getRangeAt(0);
+      const selectedNode = range.commonAncestorContainer;
+      const parentBlock = getBlockParent(selectedNode);
+
+      if (parentBlock) {
+        parentBlock.outerHTML = `<${tag}>${parentBlock.innerHTML}</${tag}>`;
+      } else {
+        document.execCommand('formatBlock', false, tag);
       }
+      editorEl.focus();
+      updateStats();
+      buildTOC();
+    }
 
-      // --- Медиа и разделитель ---
-      function promptMedia() {
-        const url = prompt('Вставьте URL картинки или видео (YouTube/Vimeo):');
-        if (!url) return;
-
-        if (url.includes('youtube.com') || url.includes('youtu.be')) {
-          const id = url.split('v=').pop().split('&')[0].replace('youtu.be/', '').split('/').pop();
-          const iframe = `<iframe width="100%" height="315" src="https://www.youtube.com/embed/${id}" frameborder="0" allowfullscreen></iframe>`;
-          insertHtml(iframe);
-        } else if (url.includes('vimeo.com')) {
-          const id = url.split('/').pop().split('?')[0];
-          const iframe = `<iframe src="https://player.vimeo.com/video/${id}" width="100%" height="315" frameborder="0" allow="fullscreen"></iframe>`;
-          insertHtml(iframe);
-        } else {
-          insertHtml(`<img src="${escapeHtml(url)}" alt="Медиа" loading="lazy">`);
+    function getBlockParent(node) {
+      let el = node.parentElement;
+      while (el) {
+        if (['DIV', 'P', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6'].includes(el.tagName)) {
+          return el;
         }
+        el = el.parentElement;
       }
+      return null;
+    }
 
-      function insertDivider() {
-        insertHtml('<div class="divider"></div>');
-      }
+    function wrapSelection(className) {
+      const selection = window.getSelection();
+      if (!selection.rangeCount) return;
+      const range = selection.getRangeAt(0);
+      const fragment = range.extractContents();
 
-      function insertHtml(html) {
-        const sel = window.getSelection();
-        if (!sel.rangeCount) return;
-        const range = sel.getRangeAt(0);
-        const div = document.createElement('div');
-        div.innerHTML = html;
-        let nodes = Array.from(div.childNodes);
-        nodes.forEach(n => range.insertNode(n));
-        range.collapse(false);
+      const wrapper = document.createElement('div');
+      wrapper.className = className;
+      wrapper.appendChild(fragment);
+      range.insertNode(wrapper);
+
+      editorEl.focus();
+      updateStats();
+      buildTOC();
+    }
+
+    function wrapBlock(className) {
+      const selection = window.getSelection();
+      if (!selection.rangeCount) return;
+      const range = selection.getRangeAt(0);
+      const startNode = range.startContainer;
+      const endNode = range.endContainer;
+
+      const startBlock = getBlockParent(startNode);
+      const endBlock = getBlockParent(endNode);
+
+      if (!startBlock || !endBlock) return;
+
+      // Если выделен один блок
+      if (startBlock === endBlock) {
+        startBlock.className = className;
         editorEl.focus();
-      }
-
-      // --- Базовые команды редактора ---
-      function exec(cmd) {
-        document.execCommand(cmd, false, null);
-        editorEl.focus();
-        updateAll();
-      }
-
-      function setHeading(tag) {
-        const selection = window.getSelection();
-        if (!selection.rangeCount) return;
-        const range = selection.getRangeAt(0);
-        const selectedContent = range.cloneContents();
-        const wrapper = document.createElement(tag);
-        while (selectedContent.firstChild) {
-          wrapper.appendChild(selectedContent.firstChild);
-        }
-        range.deleteContents();
-        range.insertNode(wrapper);
-        selection.removeAllRanges();
-        selection.addRange(range);
-        editorEl.focus();
-        updateAll();
-      }
-
-      function wrapSelection(type) {
-        // Для простоты делаем через блок
-        const classNameMap = {
-          blockquote: 'blockquote',
-          note: 'note',
-          warning: 'warning',
-          important: 'important'
-        };
-        const cls = classNameMap[type] || 'note';
-        insertHtml(`<div class="${cls}">Выделите текст или вставьте новый блок</div>`);
-      }
-
-      function wrapBlock(type) {
-        wrapSelection(type);
-      }
-
-      function insertLink() {
-        const url = prompt('Введите URL ссылки:');
-        if (!url) return;
-        document.execCommand('createLink', false, url);
-        editorEl.focus();
-        updateAll();
-      }
-
-      function updateAll() {
         updateStats();
         buildTOC();
-        updatePreview();
-        saveDraft();
+        return;
       }
 
-      editorEl.addEventListener('input', updateAll);
-      titleEl.addEventListener('input', () => {
-        updateAll();
+      // Если выделено несколько блоков — оборачиваем их в общий div
+      const wrapper = document.createElement('div');
+      wrapper.className = className;
+
+      const nodesToMove = [];
+      let current = startBlock;
+      while (current) {
+        nodesToMove.push(current);
+        if (current === endBlock) break;
+        current = current.nextElementSibling;
+      }
+
+      nodesToMove.forEach(n => wrapper.appendChild(n));
+      startBlock.parentNode.insertBefore(wrapper, startBlock);
+      nodesToMove.forEach(n => n.remove()); // на случай дублей
+
+      editorEl.focus();
+      updateStats();
+      buildTOC();
+    }
+
+    function insertLink() {
+      const url = prompt('Введите URL:');
+      if (!url) return;
+      document.execCommand('createLink', false, url);
+      editorEl.focus();
+      updateStats();
+    }
+
+    function promptMedia() {
+      const src = prompt('Введите URL картинки или видео:');
+      if (!src) return;
+      const isImg = /\.(jpg|jpeg|png|gif|webp)$/i.test(src);
+      const el = isImg ? document.createElement('img') : document.createElement('video');
+      el.src = src;
+      if (!isImg) el.controls = true;
+      el.style.maxWidth = '100%';
+      el.style.display = 'block';
+      editorEl.appendChild(el);
+      updateStats();
+      buildTOC();
+    }
+
+    function insertDivider() {
+      const divider = document.createElement('div');
+      divider.className = 'divider';
+      editorEl.appendChild(divider);
+      updateStats();
+      buildTOC();
+    }
+
+    document.getElementById('btn-publish').addEventListener('click', () => {
+      const title = titleEl.value.trim();
+      if (!title) {
+        alert('Нужен заголовок!');
+        return;
+      }
+
+      const article = {
+        title: title,
+        content: editorEl.innerHTML.trim(),
+        createdAt: new Date().toISOString()
+      };
+
+      localStorage.setItem('last_published_article', JSON.stringify(article));
+      publishResult.style.display = 'block';
+      alert('Статья сохранена в браузере! Теперь можешь открыть view.html, чтобы посмотреть её.');
+    });
+
+    document.getElementById('btn-clear').addEventListener('click', () => {
+      if (confirm('Очистить статью?')) {
+        editorEl.innerHTML = '';
+        titleEl.value = '';
+        updateStats();
         buildTOC();
-      });
+        publishResult.style.display = 'none';
+      }
+    });
 
-      loadDraft();
-    </script>
-  </body>
+    document.getElementById('btn-cancel').addEventListener('click', () => {
+      window.location.reload();
+    });
+  </script>
+</body>
 </html>
-
