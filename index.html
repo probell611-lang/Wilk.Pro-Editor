@@ -5,32 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Telegra.ph-like Editor (Pro)</title>
 
-    <!-- Firebase SDK -->
+    <!-- Firebase SDK через CDN (работает прямо в браузере) -->
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-      import { getFirestore, collection, addDoc, getDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+      import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-      // 👇 ВСТАВЬ СЮДА СВОИ КЛЮЧИ ИЗ FIREBASE (Project Settings → Your apps → Config)
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getFirestore, collection, addDoc, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+      // Твой конфиг Firebase (ключи уже вставлены)
+      const firebaseConfig = {
+        apiKey: "AIzaSyC9uJtZYWaYT7Z8hIrRd11eT_huiCw829w",
+        authDomain: "wilk-pro-editor-7a469.firebaseapp.com",
+        projectId: "wilk-pro-editor-7a469",
+        storageBucket: "wilk-pro-editor-7a469.firebasestorage.app",
+        messagingSenderId: "241990150929",
+        appId: "1:241990150929:web:cdbdf514719e19c1bd7ab0"
+      };
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyC9uJtZYWaYT7Z8hIrRd11eT_huiCw829w",
-    authDomain: "wilk-pro-editor-7a469.firebaseapp.com",
-    projectId: "wilk-pro-editor-7a469",
-    storageBucket: "wilk-pro-editor-7a469.firebasestorage.app",
-    messagingSenderId: "241990150929",
-    appId: "1:241990150929:web:cdbdf514719e19c1bd7ab0"
-    // measurementId не нужен
-  };
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
 
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-
-  // Делаем db доступным глобально, чтобы обработчик кнопки мог его использовать
-  window.fb = { app, db };
-</script>
+      // Делаем базу доступной глобально для обработчика кнопки
+      window.fb = { app, db };
+    </script>
 
     <style>
       :root {
@@ -525,3 +520,4 @@
     </script>
   </body>
 </html>
+
