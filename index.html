@@ -4,6 +4,27 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Telegra.ph-like Editor (Pro)</title>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+      import { getFirestore, collection, addDoc, getDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+      // 👇 ВСТАВЬ СЮДА СВОИ КЛЮЧИ ИЗ FIREBASE (Project Settings → Your apps → Config)
+      const firebaseConfig = {
+        apiKey: "AIzaSyD...",
+        authDomain: "my-telegraph-editor.firebaseapp.com",
+        projectId: "my-telegraph-editor",
+        storageBucket: "my-telegraph-editor.appspot.com",
+        messagingSenderId: "...",
+        appId: "..."
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+      window.fb = { app, db };
+    </script>
+
     <style>
       :root {
         --bg: #ffffff;
@@ -14,7 +35,6 @@
         --muted: #888888;
         --accent: #555555;
       }
-
       [data-theme="dark"] {
         --bg: #121212;
         --text: #e0e0e0;
@@ -22,18 +42,14 @@
         --muted: #aaaaaa;
         --accent: #cccccc;
       }
-
       * { box-sizing: border-box; margin: 0; padding: 0; }
-
       body {
         background: var(--bg);
         color: var(--text);
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         line-height: 1.6;
         padding: 24px;
-        transition: background 0.3s, color 0.3s;
       }
-
       .container {
         max-width: 1200px;
         margin: 0 auto;
@@ -41,206 +57,72 @@
         grid-template-columns: 1fr 420px;
         gap: 24px;
       }
-
-      @media (max-width: 900px) {
-        .container { grid-template-columns: 1fr; }
-      }
-
-      header {
-        margin-bottom: 20px;
-        border-bottom: 1px solid var(--border);
-        padding-bottom: 16px;
-      }
-
-      h1 {
-        font-size: 28px;
-        font-weight: 400;
-        letter-spacing: -0.5px;
-      }
-
+      @media (max-width: 900px) { .container { grid-template-columns: 1fr; } }
+      header { margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 16px; }
+      h1 { font-size: 28px; font-weight: 400; letter-spacing: -0.5px; }
       input[type="text"] {
-        width: 100%;
-        padding: 12px 14px;
-        border: 1px solid var(--border);
-        border-radius: 6px;
-        font-size: 18px;
-        margin-top: 12px;
-        outline: none;
+        width: 100%; padding: 12px 14px; border: 1px solid var(--border);
+        border-radius: 6px; font-size: 18px; margin-top: 12px; outline: none;
       }
-
       input[type="text"]:focus { border-color: var(--action); }
-
       #editor {
-        min-height: 500px;
-        padding: 16px;
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        cursor: text;
-        outline: none;
-        white-space: pre-wrap;
+        min-height: 500px; padding: 16px; border: 1px solid var(--border);
+        border-radius: 8px; cursor: text; outline: none; white-space: pre-wrap;
       }
-
-      [contenteditable]:empty:before {
-        content: attr(placeholder);
-        color: #ccc;
-        pointer-events: none;
-        display: block;
+      [contenteditable]:empty::before {
+        content: attr(placeholder); color: #ccc; pointer-events: none; display: block;
       }
-
-      /* Toolbar */
-      .toolbar {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        margin-bottom: 12px;
-      }
-
+      .toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
       button.tool {
-        padding: 8px 12px;
-        border: 1px solid var(--border);
-        background: #f5f5f5;
-        color: var(--text);
-        border-radius: 6px;
-        cursor: pointer;
-        font-size: 13px;
+        padding: 8px 12px; border: 1px solid var(--border); background: #f5f5f5;
+        color: var(--text); border-radius: 6px; cursor: pointer; font-size: 13px;
       }
-      [data-theme="dark"] button.tool { background: #333; border-color: #555; color: var(--text); }
-
+      [data-theme="dark"] button.tool { background: #333; border-color: #555; }
       button.tool:hover { background: var(--accent); }
       [data-theme="dark"] button.tool:hover { background: #444; }
-
       button.btn-primary {
-        background: var(--action);
-        color: white;
-        border: none;
-        padding: 10px 16px;
-        border-radius: 6px;
-        cursor: pointer;
-        font-size: 14px;
+        background: var(--action); color: white; border: none; padding: 10px 16px;
+        border-radius: 6px; cursor: pointer; font-size: 14px;
       }
       button.btn-primary:hover { background: var(--hover); }
-
-      /* Sidebar: preview, stats, toc */
-      aside {
-        border-left: 1px solid var(--border);
-        padding-left: 20px;
-        height: fit-content;
-      }
-
+      aside { border-left: 1px solid var(--border); padding-left: 20px; height: fit-content; }
       .panel { margin-bottom: 32px; }
       .panel h3 { font-size: 15px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 12px; }
-
-      .stats-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 6px;
-      }
-      .stat-item { font-size: 13px; }
-      .stat-val { font-weight: bold; color: var(--action); }
-
-      /* Preview */
+      .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+      .stat-item { font-size: 13px; } .stat-val { font-weight: bold; color: var(--action); }
       #preview {
-        background: var(--bg);
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        padding: 16px;
-        min-height: 400px;
-        overflow-y: auto;
+        background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+        padding: 16px; min-height: 400px; overflow-y: auto;
       }
       #preview img { max-width: 100%; height: auto; border-radius: 4px; }
-      #preview video { width: 100%; border-radius: 4px; }
-
-      /* TOC */
-      #toc ul { list-style: none; }
-      #toc li { margin: 4px 0; }
-      #toc a { color: var(--action); text-decoration: none; }
-      #toc a:hover { text-decoration: underline; }
-
-      /* Special blocks */
       blockquote {
-        border-left: 4px solid var(--action);
-        margin: 16px 0;
-        padding-left: 16px;
-        color: var(--muted);
-        font-style: italic;
+        border-left: 4px solid var(--action); margin: 16px 0; padding-left: 16px;
+        color: var(--muted); font-style: italic;
       }
-      .note, .warning, .important {
-        padding: 12px;
-        border-radius: 6px;
-        margin: 16px 0;
-      }
+      .note, .warning, .important { padding: 12px; border-radius: 6px; margin: 16px 0; }
       .note { background: #f0f7ff; border: 1px solid #cce5ff; color: #0056b3; }
       .warning { background: #fff3cd; border: 1px solid #ffeeba; color: #856404; }
       .important { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
-
-      /* Divider */
       .divider {
-        height: 2px;
-        background: var(--border);
-        margin: 24px 0;
-        position: relative;
+        height: 2px; background: var(--border); margin: 24px 0; position: relative;
       }
       .divider::after {
-        content: '—';
-        position: absolute;
-        left: 50%;
-        top: 50%;
-        transform: translate(-50%, -50%);
-        background: var(--bg);
-        padding: 0 8px;
-        color: var(--muted);
+        content: '—'; position: absolute; left: 50%; top: 50%;
+        transform: translate(-50%, -50%); background: var(--bg); padding: 0 8px; color: var(--muted);
       }
-
-      /* Versions */
       #versions-list { max-height: 300px; overflow-y: auto; }
       #versions-list li {
-        padding: 6px 8px;
-        border-bottom: 1px solid var(--border);
-        cursor: pointer;
-        font-size: 13px;
+        padding: 6px 8px; border-bottom: 1px solid var(--border); cursor: pointer; font-size: 13px;
       }
-      #versions-list li:hover { background: #f5f5f5; }
-      [data-theme="dark"] #versions-list li:hover { background: #222; }
-
-      /* Save status */
-      #save-status {
-        font-size: 12px;
-        color: var(--muted);
-        margin-top: 8px;
-        text-align: right;
-      }
-      .saving { color: var(--action); }
-      .saved { color: #28a745; }
-      .error { color: #dc3545; }
-
-      /* Publish result */
+      #save-status { font-size: 12px; color: var(--muted); margin-top: 8px; text-align: right; }
+      .saving { color: var(--action); } .saved { color: #28a745; } .error { color: #dc3545; }
       #publish-result {
-        margin-top: 24px;
-        padding: 16px;
-        border: 2px dashed var(--action);
-        border-radius: 8px;
-        background: #f0f8ff;
-        color: #0d47a1;
-        display: none;
-        animation: fadeIn 0.4s ease;
+        margin-top: 24px; padding: 16px; border: 2px dashed var(--action);
+        border-radius: 8px; background: #f0f8ff; color: #0d47a1; display: none; animation: fadeIn 0.4s ease;
       }
-      @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(-4px); }
-        to { opacity: 1; transform: translateY(0); }
-      }
-      #published-link {
-        color: #d32f2f;
-        font-weight: bold;
-        text-decoration: underline;
-        word-break: break-all;
-      }
-
-      footer {
-        margin-top: 48px;
-        text-align: center;
-        color: var(--muted);
-        font-size: 13px;
-      }
+      @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+      #published-link { color: #d32f2f; font-weight: bold; text-decoration: underline; word-break: break-all; }
+      footer { margin-top: 48px; text-align: center; color: var(--muted); font-size: 13px; }
     </style>
   </head>
   <body>
@@ -256,18 +138,14 @@
           <button class="tool" onclick="exec('italic')">I</button>
           <button class="tool" onclick="exec('underline')">U</button>
           <button class="tool" onclick="insertLink()">🔗</button>
-
           <button class="tool" onclick="setHeading('H2')">H2</button>
           <button class="tool" onclick="setHeading('H3')">H3</button>
-
           <button class="tool" onclick="exec('insertUnorderedList')">•</button>
           <button class="tool" onclick="exec('insertOrderedList')">1.</button>
-
           <button class="tool" onclick="wrapSelection('blockquote')">Цитата</button>
           <button class="tool" onclick="wrapBlock('note')">Заметка</button>
           <button class="tool" onclick="wrapBlock('warning')">Внимание</button>
           <button class="tool" onclick="wrapBlock('important')">Важно</button>
-
           <button class="tool" onclick="promptMedia()">Медиа</button>
           <button class="tool" onclick="insertDivider()">Разделитель</button>
         </div>
@@ -282,9 +160,8 @@
 
         <div id="publish-result">
           <strong>Статья опубликована!</strong><br>
-          Ссылка на статью: <a id="published-link" href="#" target="_blank">Загрузка ссылки...</a>
+          Ссылка на статью: <a id="published-link" href="#" target="_blank">Загрузка...</a>
         </div>
-
         <div id="save-status">Сохранение: —</div>
       </main>
 
@@ -355,13 +232,11 @@
       let saveTimeout;
       let isSaving = false;
 
-      // --- Theme ---
       const themeToggle = document.getElementById('theme-toggle');
       themeToggle.addEventListener('change', () => {
         document.body.setAttribute('data-theme', themeToggle.checked ? 'dark' : '');
       });
 
-      // --- Load & Save ---
       function loadDraft() {
         const draft = localStorage.getItem(STORAGE_KEY);
         if (!draft) return;
@@ -378,10 +253,7 @@
         updateSaveStatus('Сохраняется...', 'saving');
         clearTimeout(saveTimeout);
         saveTimeout = setTimeout(() => {
-          const data = {
-            title: titleEl.value.trim(),
-            content: editorEl.innerHTML.trim()
-          };
+          const data = { title: titleEl.value.trim(), content: editorEl.innerHTML.trim() };
           localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
           isSaving = false;
           updateSaveStatus('Сохранено', 'saved');
@@ -394,12 +266,10 @@
         saveStatus.className = cls ? cls : '';
       }
 
-      // --- Stats ---
       function updateStats() {
         const text = editorEl.innerText;
         const words = text.trim().split(/\s+/).filter(Boolean).length;
         const chars = text.length;
-        // Считаем абзацы по блочным элементам, исключая BR
         const paragraphs = Array.from(editorEl.children).filter(n => n.tagName !== 'BR').length || 1;
         const avgLen = paragraphs > 0 ? Math.round(chars / paragraphs) : 0;
 
@@ -409,7 +279,6 @@
         statAvgLenEl.textContent = avgLen;
       }
 
-      // --- TOC ---
       function buildTOC() {
         tocEl.innerHTML = '';
         const h2s = editorEl.querySelectorAll('h2');
@@ -417,6 +286,7 @@
           tocEl.innerHTML = '<span style="color:#999">Заголовков H2 нет</span>';
           return;
         }
+
         const ul = document.createElement('ul');
         h2s.forEach((h, i) => {
           const id = 'section-' + i;
@@ -431,7 +301,7 @@
         tocEl.appendChild(ul);
       }
 
-      // --- Preview ---
+      // --- Предпросмотр ---
       function updatePreview() {
         const title = titleEl.value.trim() ? `<h1>${escapeHtml(titleEl.value)}</h1>` : '';
         previewEl.innerHTML = title + editorEl.innerHTML;
@@ -447,110 +317,37 @@
           .replace(/'/g, '&#39;');
       }
 
-      // --- Publish handler: реально открывает статью в новой вкладке ---
-      document.getElementById('btn-publish').addEventListener('click', () => {
+      // --- Публикация через Firebase Firestore ---
+      document.getElementById('btn-publish').addEventListener('click', async () => {
         const title = titleEl.value.trim();
         if (!title) {
           alert('Нужен заголовок!');
           return;
         }
 
-        // Генерируем HTML-код статьи (с теми же стилями, чтобы выглядело одинаково)
-        const articleHtml = `
-<!DOCTYPE html>
-<html lang="ru">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>${escapeHtml(title)}</title>
-    <style>
-      :root {
-        --bg: #ffffff;
-        --text: #111111;
-        --border: #e5e5e5;
-        --action: #0088cc;
-        --muted: #888888;
-      }
-      [data-theme="dark"] {
-        --bg: #121212;
-        --text: #e0e0e0;
-        --border: #333333;
-        --muted: #aaaaaa;
-      }
-      * { box-sizing: border-box; margin: 0; padding: 0; }
-      body {
-        background: var(--bg);
-        color: var(--text);
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        line-height: 1.6;
-        padding: 40px 20px;
-        max-width: 800px;
-        margin: 0 auto;
-      }
-      h1 { font-size: 32px; margin-bottom: 24px; line-height: 1.2; }
-      h2 { font-size: 26px; margin: 36px 0 16px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
-      p { margin-bottom: 16px; }
-      blockquote {
-        border-left: 4px solid var(--action);
-        margin: 20px 0;
-        padding-left: 16px;
-        color: var(--muted);
-        font-style: italic;
-      }
-      .note, .warning, .important {
-        padding: 16px;
-        border-radius: 6px;
-        margin: 20px 0;
-      }
-      .note { background: #f0f7ff; border: 1px solid #cce5ff; color: #0056b3; }
-      .warning { background: #fff3cd; border: 1px solid #ffeeba; color: #856404; }
-      .important { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
-      img { max-width: 100%; height: auto; border-radius: 8px; margin: 12px 0; }
-      iframe { width: 100%; border-radius: 8px; border: none; margin: 12px 0; }
-      .divider {
-        height: 2px;
-        background: var(--border);
-        margin: 30px 0;
-        position: relative;
-      }
-      .divider::after {
-        content: '—';
-        position: absolute;
-        left: 50%;
-        top: 50%;
-        transform: translate(-50%, -50%);
-        background: var(--bg);
-        padding: 0 12px;
-        color: var(--muted);
-      }
-      footer { margin-top: 60px; color: var(--muted); font-size: 13px; text-align: center; }
-    </style>
-  </head>
-  <body>
-    <article>
-      <h1>${escapeHtml(title)}</h1>
-      ${editorEl.innerHTML.trim()}
-    </article>
-    <footer>
-      &copy; wilk Pro Article. Статья сгенерирована редактором.
-    </footer>
-  </body>
-</html>
-        `;
+        try {
+          // Отправляем в Firestore
+          const docRef = await addDoc(collection(window.fb.db, "articles"), {
+            title: title,
+            content: editorEl.innerHTML.trim(),
+            createdAt: new Date()
+          });
 
-        // Создаем Blob и открываем в новой вкладке
-        const blob = new Blob([articleHtml], { type: 'text/html;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        window.open(url, '_blank');
+          // Генерируем ссылку на страницу просмотра
+          const publicUrl = `${window.location.origin}/view.html?id=${docRef.id}`;
 
-        // Показываем результат в интерфейсе
-        publishResult.style.display = 'block';
-        publishedLink.href = url;
-        publishedLink.textContent = url;
-        window.scrollTo({ top: publishResult.offsetTop - 20, behavior: 'smooth' });
+          publishResult.style.display = 'block';
+          publishedLink.href = publicUrl;
+          publishedLink.textContent = publicUrl;
+
+          window.scrollTo({ top: publishResult.offsetTop - 20, behavior: 'smooth' });
+        } catch (e) {
+          console.error(e);
+          alert('Ошибка публикации: ' + e.message);
+        }
       });
 
-      // --- Versions ---
+      // --- Версии (черновики в localStorage) ---
       function getVersions() {
         try {
           return JSON.parse(localStorage.getItem(VERSIONS_KEY) || '[]');
@@ -595,7 +392,7 @@
         alert('Версия сохранена');
       }
 
-      // --- Export ---
+      // --- Экспорт ---
       function exportHTML() {
         const title = titleEl.value.trim();
         const content = editorEl.innerHTML.trim();
@@ -622,7 +419,7 @@
         }, 100);
       }
 
-      // --- Media & Divider ---
+      // --- Медиа и разделитель ---
       function promptMedia() {
         const url = prompt('Вставьте URL картинки или видео (YouTube/Vimeo):');
         if (!url) return;
@@ -656,7 +453,7 @@
         editorEl.focus();
       }
 
-      // --- Formatting helpers ---
+      // --- Базовые команды редактора ---
       function exec(cmd) {
         document.execCommand(cmd, false, null);
         editorEl.focus();
@@ -680,33 +477,20 @@
         updateAll();
       }
 
-      function wrapSelection(className) {
-        const selection = window.getSelection();
-        if (!selection.isCollapsed && selection.rangeCount > 0) {
-          const range = selection.getRangeAt(0);
-          const selectedContent = range.cloneContents();
-          const wrapper = document.createElement('blockquote');
-          while (selectedContent.firstChild) {
-            wrapper.appendChild(selectedContent.firstChild);
-          }
-          range.deleteContents();
-          range.insertNode(wrapper);
-          selection.removeAllRanges();
-          editorEl.focus();
-          updateAll();
-        } else {
-          alert('Сначала выделите текст');
-        }
-      }
-
-      function wrapBlock(type) {
+      function wrapSelection(type) {
+        // Для простоты делаем через блок
         const classNameMap = {
+          blockquote: 'blockquote',
           note: 'note',
           warning: 'warning',
           important: 'important'
         };
         const cls = classNameMap[type] || 'note';
-        insertHtml(`<div class="${cls}">Выделенный текст или новый блок</div>`);
+        insertHtml(`<div class="${cls}">Выделите текст или вставьте новый блок</div>`);
+      }
+
+      function wrapBlock(type) {
+        wrapSelection(type);
       }
 
       function insertLink() {
@@ -734,4 +518,3 @@
     </script>
   </body>
 </html>
-
