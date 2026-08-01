@@ -2,73 +2,200 @@
 <html lang="ru">
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Статья</title>
-    <style>
-      :root { --bg: #ffffff; --text: #111111; --border: #e5e5e5; --action: #0088cc; --muted: #888888; }
-      body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; padding: 40px 20px; max-width: 800px; margin: 0 auto; }
-      h1 { font-size: 32px; margin-bottom: 24px; line-height: 1.2; }
-      h2 { font-size: 26px; margin: 36px 0 16px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
-      p { margin-bottom: 16px; }
-      blockquote { border-left: 4px solid var(--action); margin: 20px 0; padding-left: 16px; color: var(--muted); font-style: italic; }
-      .note, .warning, .important { padding: 16px; border-radius: 6px; margin: 20px 0; }
-      .note { background: #f0f7ff; border: 1px solid #cce5ff; color: #0056b3; }
-      .warning { background: #fff3cd; border: 1px solid #ffeeba; color: #856404; }
-      .important { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
-      img { max-width: 100%; height: auto; border-radius: 8px; margin: 12px 0; }
-      iframe { width: 100%; border-radius: 8px; border: none; margin: 12px 0; }
-      .divider { height: 2px; background: var(--border); margin: 30px 0; position: relative; }
-      .divider::after { content: '—'; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); background: var(--bg); padding: 0 12px; color: var(--muted); }
-      footer { margin-top: 60px; color: var(--muted); font-size: 13px; text-align: center; }
-    </style>
 
-    <!-- Firebase SDK -->
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getFirestore, collection, addDoc, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    <!-- Firebase SDK через CDN (точно такой же, как в index.html) -->
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+      import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyC9uJtZYWaYT7Z8hIrRd11eT_huiCw829w",
-    authDomain: "wilk-pro-editor-7a469.firebaseapp.com",
-    projectId: "wilk-pro-editor-7a469",
-    storageBucket: "wilk-pro-editor-7a469.firebasestorage.app",
-    messagingSenderId: "241990150929",
-    appId: "1:241990150929:web:cdbdf514719e19c1bd7ab0"
-    // measurementId не нужен
-  };
+      // Твой конфиг Firebase (ключи уже вставлены)
+      const firebaseConfig = {
+        apiKey: "AIzaSyC9uJtZYWaYT7Z8hIrRd11eT_huiCw829w",
+        authDomain: "wilk-pro-editor-7a469.firebaseapp.com",
+        projectId: "wilk-pro-editor-7a469",
+        storageBucket: "wilk-pro-editor-7a469.firebasestorage.app",
+        messagingSenderId: "241990150929",
+        appId: "1:241990150929:web:cdbdf514719e19c1bd7ab0"
+      };
 
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
 
       window.addEventListener('DOMContentLoaded', async () => {
         const params = new URLSearchParams(window.location.search);
         const id = params.get('id');
+
         if (!id) {
-          document.body.innerHTML = '<h1>ID статьи не указан</h1>';
+          document.body.innerHTML = `
+            <div style="padding: 40px; text-align: center; font-family: sans-serif;">
+              <h1>Ошибка</h1>
+              <p>Не указан ID статьи. Проверьте ссылку.</p>
+              <a href="/">Вернуться к редактору</a>
+            </div>
+          `;
           return;
         }
 
-        const docRef = doc(db, 'articles', id);
-        const snapshot = await getDoc(docRef);
+        const articleEl = document.getElementById('article-content');
+        const titleEl = document.querySelector('title');
+        const h1El = document.querySelector('#article-title');
 
-        if (!snapshot.exists()) {
-          document.body.innerHTML = '<h1>Статья не найдена</h1>';
-          return;
+        try {
+          const docRef = doc(db, 'articles', id);
+          const snapshot = await getDoc(docRef);
+
+          if (!snapshot.exists()) {
+            document.body.innerHTML = `
+              <div style="padding: 40px; text-align: center; font-family: sans-serif;">
+                <h1>Статья не найдена</h1>
+                <p>Возможно, она была удалена или ID указан неверно.</p>
+                <a href="/">Вернуться к редактору</a>
+              </div>
+            `;
+            return;
+          }
+
+          const data = snapshot.data();
+          titleEl.textContent = data.title;
+          h1El.textContent = data.title;
+          articleEl.innerHTML = data.content;
+
+          // Принудительно ставим id на H2 для якорей (на случай, если статья была опубликована без них)
+          const h2s = articleEl.querySelectorAll('h2');
+          h2s.forEach((h, i) => {
+            if (!h.id) h.id = 'section-' + i;
+          });
+        } catch (e) {
+          console.error(e);
+          document.body.innerHTML = `
+            <div style="padding: 40px; text-align: center; font-family: sans-serif; color: #d32f2f;">
+              <h1>Ошибка загрузки</h1>
+              <p>${e.message}</p>
+              <a href="/">Вернуться к редактору</a>
+            </div>
+          `;
         }
-
-        const data = snapshot.data();
-        document.querySelector('title').textContent = data.title;
-        document.querySelector('h1').insertAdjacentHTML('afterend', data.content);
       });
     </script>
+
+    <style>
+      :root {
+        --bg: #ffffff;
+        --text: #111111;
+        --border: #e5e5e5;
+        --action: #0088cc;
+        --muted: #888888;
+      }
+      [data-theme="dark"] {
+        --bg: #121212;
+        --text: #e0e0e0;
+        --border: #333333;
+        --muted: #aaaaaa;
+      }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        line-height: 1.7;
+        padding: 20px;
+      }
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+      }
+      header { margin-bottom: 32px; border-bottom: 1px solid var(--border); padding-bottom: 20px; }
+      #article-title {
+        font-size: 36px;
+        font-weight: 400;
+        line-height: 1.2;
+        letter-spacing: -0.5px;
+      }
+      article { margin-top: 24px; }
+      p { margin-bottom: 16px; }
+      h2 {
+        font-size: 28px;
+        margin-top: 40px;
+        margin-bottom: 12px;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 8px;
+      }
+      h3 {
+        font-size: 22px;
+        margin-top: 30px;
+        margin-bottom: 10px;
+      }
+      ul, ol { margin-bottom: 16px; padding-left: 20px; }
+      li { margin-bottom: 6px; }
+      blockquote {
+        border-left: 4px solid var(--action);
+        margin: 20px 0;
+        padding-left: 16px;
+        color: var(--muted);
+        font-style: italic;
+      }
+      img {
+        max-width: 100%;
+        height: auto;
+        border-radius: 8px;
+        margin: 16px 0;
+        display: block;
+      }
+      iframe {
+        width: 100%;
+        border-radius: 8px;
+        border: none;
+        margin: 16px 0;
+      }
+      .note, .warning, .important {
+        padding: 16px;
+        border-radius: 6px;
+        margin: 20px 0;
+      }
+      .note { background: #f0f7ff; border: 1px solid #cce5ff; color: #0056b3; }
+      .warning { background: #fff3cd; border: 1px solid #ffeeba; color: #856404; }
+      .important { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+      .divider {
+        height: 2px;
+        background: var(--border);
+        margin: 30px 0;
+        position: relative;
+      }
+      .divider::after {
+        content: '—';
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        background: var(--bg);
+        padding: 0 12px;
+        color: var(--muted);
+      }
+      footer {
+        margin-top: 60px;
+        text-align: center;
+        color: var(--muted);
+        font-size: 13px;
+        padding-bottom: 20px;
+      }
+    </style>
   </head>
   <body>
-    <article>
-      <h1></h1>
-      <!-- Контент подставится JS -->
-    </article>
-    <footer>
-      &copy; wilk Pro Article. Данные из Firebase.
-    </footer>
+    <div class="container">
+      <header>
+        <h1 id="article-title"></h1>
+      </header>
+
+      <article id="article-content">
+        <!-- Контент подставится JS -->
+      </article>
+
+      <footer>
+        &copy; wilk Pro Article. Данные из Firebase Firestore.
+      </footer>
+    </div>
   </body>
 </html>
+
