@@ -399,6 +399,7 @@
         const text = editorEl.innerText;
         const words = text.trim().split(/\s+/).filter(Boolean).length;
         const chars = text.length;
+        // Считаем абзацы по блочным элементам, исключая BR
         const paragraphs = Array.from(editorEl.children).filter(n => n.tagName !== 'BR').length || 1;
         const avgLen = paragraphs > 0 ? Math.round(chars / paragraphs) : 0;
 
@@ -419,7 +420,7 @@
         const ul = document.createElement('ul');
         h2s.forEach((h, i) => {
           const id = 'section-' + i;
-          h.id = id;
+          h.id = id; // авто-назначение ID для якорей
           const li = document.createElement('li');
           const a = document.createElement('a');
           a.href = '#' + id;
@@ -446,7 +447,7 @@
           .replace(/'/g, '&#39;');
       }
 
-      // --- Publish handler ---
+      // --- Publish handler: реально открывает статью в новой вкладке ---
       document.getElementById('btn-publish').addEventListener('click', () => {
         const title = titleEl.value.trim();
         if (!title) {
@@ -454,13 +455,98 @@
           return;
         }
 
-        const fakeId = Math.random().toString(36).substring(2, 8).toUpperCase();
-        const fakeUrl = `https://wilk.pro/instwilk/${fakeId}`;
+        // Генерируем HTML-код статьи (с теми же стилями, чтобы выглядело одинаково)
+        const articleHtml = `
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>${escapeHtml(title)}</title>
+    <style>
+      :root {
+        --bg: #ffffff;
+        --text: #111111;
+        --border: #e5e5e5;
+        --action: #0088cc;
+        --muted: #888888;
+      }
+      [data-theme="dark"] {
+        --bg: #121212;
+        --text: #e0e0e0;
+        --border: #333333;
+        --muted: #aaaaaa;
+      }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        line-height: 1.6;
+        padding: 40px 20px;
+        max-width: 800px;
+        margin: 0 auto;
+      }
+      h1 { font-size: 32px; margin-bottom: 24px; line-height: 1.2; }
+      h2 { font-size: 26px; margin: 36px 0 16px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+      p { margin-bottom: 16px; }
+      blockquote {
+        border-left: 4px solid var(--action);
+        margin: 20px 0;
+        padding-left: 16px;
+        color: var(--muted);
+        font-style: italic;
+      }
+      .note, .warning, .important {
+        padding: 16px;
+        border-radius: 6px;
+        margin: 20px 0;
+      }
+      .note { background: #f0f7ff; border: 1px solid #cce5ff; color: #0056b3; }
+      .warning { background: #fff3cd; border: 1px solid #ffeeba; color: #856404; }
+      .important { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+      img { max-width: 100%; height: auto; border-radius: 8px; margin: 12px 0; }
+      iframe { width: 100%; border-radius: 8px; border: none; margin: 12px 0; }
+      .divider {
+        height: 2px;
+        background: var(--border);
+        margin: 30px 0;
+        position: relative;
+      }
+      .divider::after {
+        content: '—';
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        background: var(--bg);
+        padding: 0 12px;
+        color: var(--muted);
+      }
+      footer { margin-top: 60px; color: var(--muted); font-size: 13px; text-align: center; }
+    </style>
+  </head>
+  <body>
+    <article>
+      <h1>${escapeHtml(title)}</h1>
+      ${editorEl.innerHTML.trim()}
+    </article>
+    <footer>
+      &copy; wilk Pro Article. Статья сгенерирована редактором.
+    </footer>
+  </body>
+</html>
+        `;
 
-        publishedLink.href = fakeUrl;
-        publishedLink.textContent = fakeUrl;
+        // Создаем Blob и открываем в новой вкладке
+        const blob = new Blob([articleHtml], { type: 'text/html;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
 
+        // Показываем результат в интерфейсе
         publishResult.style.display = 'block';
+        publishedLink.href = url;
+        publishedLink.textContent = url;
         window.scrollTo({ top: publishResult.offsetTop - 20, behavior: 'smooth' });
       });
 
@@ -648,3 +734,4 @@
     </script>
   </body>
 </html>
+
